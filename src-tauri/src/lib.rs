@@ -131,6 +131,42 @@ async fn upload_to_r2(buffer: &[u8], category: &str, file_name: &str) -> Result<
     Ok(format!("{}/{}", public_url, key))
 }
 
+#[tauri::command]
+async fn list_cloud_objects() -> Result<Vec<serde_json::Value>, String> {
+    dotenv().ok();
+    let account_id = std::env::var("R2_ACCOUNT_ID").map_err(|_| "R2_ACCOUNT_ID not found")?;
+    let access_key = std::env::var("R2_ACCESS_KEY_ID").map_err(|_| "R2_ACCESS_KEY_ID not found")?;
+    let secret_key = std::env::var("R2_SECRET_ACCESS_KEY").map_err(|_| "R2_SECRET_ACCESS_KEY not found")?;
+    let bucket_name = std::env::var("R2_BUCKET_NAME").map_err(|_| "R2_BUCKET_NAME not found")?;
+
+    let config = aws_config::defaults(aws_config::BehaviorVersion::latest())
+        .credentials_provider(Credentials::new(access_key, secret_key, None, None, "custom"))
+        .region(aws_config::Region::new("auto"))
+        .endpoint_url(format!("https://{}.r2.cloudflarestorage.com", account_id))
+        .load()
+        .await;
+
+    let client = Client::new(&config);
+    let resp = client.list_objects_v2().bucket(bucket_name).send().await
+        .map_err(|e| format!("S3 list error: {}", e))?;
+
+    let mut objects = Vec::new();
+    if let Some(contents) = resp.contents {
+        for obj in contents {
+            if let Some(key) = obj.key {
+                objects.push(serde_json::json!({
+                    "name": key.split('/').last().unwrap_or(&key).to_string(),
+                    "path": key.clone(),
+                    "isDirectory": key.ends_with('/'),
+                    "status": "idle"
+                }));
+            }
+        }
+    }
+
+    Ok(objects)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 #[tauri::command]
 fn get_system_paths() -> Vec<serde_json::Value> {
@@ -181,7 +217,8 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             process_and_upload_image,
-            get_system_paths
+            get_system_paths,
+            list_cloud_objects
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

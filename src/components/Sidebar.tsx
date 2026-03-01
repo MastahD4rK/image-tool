@@ -1,19 +1,25 @@
 import { TreeItem } from "./TreeItem";
 import { FileEntry } from "../types";
-import { LogOut } from "lucide-react";
+import { LogOut, Cloud, HardDrive } from "lucide-react";
+import { cn } from "../lib/utils";
 
 interface SidebarProps {
     rootEntries: FileEntry[];
     currentPath: string;
     onToggle: (e: FileEntry) => void;
     onExit: () => void;
+    storageType: "local" | "cloud";
 }
 
-export function Sidebar({ rootEntries, currentPath, onToggle, onExit }: SidebarProps) {
+export function Sidebar({ rootEntries, currentPath, onToggle, onExit, storageType }: SidebarProps) {
     return (
         <aside className="w-56 border-r border-white/[0.08] bg-black flex flex-col shrink-0 select-none">
-            <header className="h-12 px-6 flex items-center justify-between text-[10px] uppercase tracking-[0.3em] font-bold text-white/40 group hover:text-white/80 transition-all cursor-default">
-                EXPLORADOR
+            <header className={cn(
+                "h-12 px-6 flex items-center gap-3 text-[10px] uppercase tracking-[0.3em] font-black transition-all cursor-default",
+                storageType === "cloud" ? "text-blue-400" : "text-white/40"
+            )}>
+                {storageType === "cloud" ? <Cloud className="w-3.5 h-3.5" /> : <HardDrive className="w-3.5 h-3.5" />}
+                {storageType === "cloud" ? "NUBE R2" : "EXPLORADOR"}
             </header>
 
             <div className="flex-1 overflow-x-hidden overflow-y-auto py-2 border-t border-white/[0.02]">
@@ -25,6 +31,7 @@ export function Sidebar({ rootEntries, currentPath, onToggle, onExit }: SidebarP
                             depth={0}
                             onToggle={onToggle}
                             activePath={currentPath}
+                            storageType={storageType}
                         />
                     ))}
                 </div>

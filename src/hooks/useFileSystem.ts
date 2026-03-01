@@ -7,10 +7,16 @@ export function useFileSystem() {
     const [rootEntries, setRootEntries] = useState<FileEntry[]>([]);
     const [currentPath, setCurrentPath] = useState<string>("");
     const [filesInView, setFilesInView] = useState<FileEntry[]>([]);
+    const [storageType, setStorageType] = useState<"local" | "cloud">("local");
 
-    const loadContents = useCallback(async (path: string, onlyDirectories: boolean = false) => {
+    const loadContents = useCallback(async (path: string, onlyDirectories: boolean = false, typeOverride?: "local" | "cloud") => {
+        const type = typeOverride || storageType;
         try {
             if (path === "root") {
+                if (type === "cloud") {
+                    const cloudPaths = await invoke<FileEntry[]>("list_cloud_objects");
+                    return cloudPaths.map(cp => ({ ...cp, status: 'idle' as const }));
+                }
                 const sysPaths = await invoke<{ name: string, path: string, type: string }[]>("get_system_paths");
                 return sysPaths.map(sp => ({
                     name: sp.name,
@@ -18,6 +24,13 @@ export function useFileSystem() {
                     isDirectory: true,
                     status: 'idle' as const,
                 }));
+            }
+
+            if (type === "cloud") {
+                // In cloud mode, we don't have nested directories yet in the simple implementation
+                // If we did, we would filter the flat list by prefix here
+                // For now, cloud is mostly flat or category-based
+                return [];
             }
 
             const entries = await readDir(path);
@@ -39,7 +52,7 @@ export function useFileSystem() {
             console.error("Error loading path:", path, err);
             return [];
         }
-    }, []);
+    }, [storageType]);
 
     const toggleFolder = useCallback(async (entry: FileEntry) => {
         const updateTreeContents = async (nodes: FileEntry[]): Promise<FileEntry[]> => {
@@ -48,7 +61,7 @@ export function useFileSystem() {
                     const isOpen = !node.isOpen;
                     let children = node.children;
                     if (isOpen && (!children || children.length === 0)) {
-                        children = await loadContents(node.path, true); // Only folders for the tree
+                        children = await loadContents(node.path, true);
                     }
                     return { ...node, isOpen, children };
                 }
@@ -59,29 +72,34 @@ export function useFileSystem() {
             }));
         };
 
-        const newTree = await updateTreeContents(rootEntries);
-        setRootEntries(newTree);
+        if (storageType === "cloud" && entry.path !== "root") {
+            // Specific cloud behavior if needed
+        } else {
+            const newTree = await updateTreeContents(rootEntries);
+            setRootEntries(newTree);
+        }
 
         if (entry.path !== "root") {
             setCurrentPath(entry.path);
-            // Load fresh contents (files + folders) for the view
             const viewEntries = await loadContents(entry.path, false);
             setFilesInView(viewEntries.filter(e => !e.isDirectory));
         }
-    }, [rootEntries, loadContents]);
+    }, [rootEntries, loadContents, storageType]);
 
-    const initRoot = useCallback(() => {
+    const initRoot = useCallback(async (type: "local" | "cloud") => {
+        setStorageType(type);
+        const initialChildren = await loadContents("root", true, type);
         setRootEntries([{
-            name: "Este equipo",
+            name: type === "local" ? "Este equipo" : "Nube R2",
             path: "root",
             isDirectory: true,
             status: 'idle',
-            isOpen: false,
-            children: []
+            isOpen: true,
+            children: initialChildren
         }]);
         setCurrentPath("");
         setFilesInView([]);
-    }, []);
+    }, [loadContents]);
 
     return {
         rootEntries,
@@ -89,6 +107,7 @@ export function useFileSystem() {
         filesInView,
         setFilesInView,
         toggleFolder,
-        initRoot
+        initRoot,
+        storageType
     };
 }

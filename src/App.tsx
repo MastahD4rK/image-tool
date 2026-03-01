@@ -18,7 +18,8 @@ function App() {
     filesInView,
     setFilesInView,
     toggleFolder,
-    initRoot
+    initRoot,
+    storageType
   } = useFileSystem();
 
   const {
@@ -29,8 +30,8 @@ function App() {
 
   useEffect(() => {
     if (env !== 'selection') {
-      initRoot();
-      setOptions(prev => ({ ...prev, storage_type: env }));
+      initRoot(env as "local" | "cloud");
+      setOptions(prev => ({ ...prev, storage_type: env as "local" | "cloud" }));
     }
   }, [env, initRoot, setOptions]);
 
@@ -59,6 +60,7 @@ function App() {
           currentPath={currentPath}
           onToggle={toggleFolder}
           onExit={() => setEnv('selection')}
+          storageType={storageType}
         />
 
         <main className="flex-1 flex flex-col bg-black">
@@ -86,7 +88,9 @@ function App() {
           {/* Status Bar */}
           <footer className="h-6 bg-black border-t border-white/[0.04] px-6 flex items-center justify-between text-[7px] font-bold text-white/30 uppercase tracking-[0.4em]">
             <div className="flex items-center gap-6">
-              <span className="text-white/40">{filesInView.length} IMGS</span>
+              <span className={storageType === 'cloud' ? 'text-blue-400' : 'text-white/40'}>
+                {filesInView.length} IMGS
+              </span>
               <span className="text-white/20">ENV: {env}</span>
             </div>
             <div className="flex items-center gap-4">
@@ -95,7 +99,7 @@ function App() {
                   <div className="w-0.5 h-0.5 rounded-full bg-blue-400 animate-pulse" /> PROCESANDO
                 </div>
               )}
-              <span className="text-white/10">BUILD v2.0.6</span>
+              <span className="text-white/10">BUILD v2.0.7</span>
             </div>
           </footer>
         </main>

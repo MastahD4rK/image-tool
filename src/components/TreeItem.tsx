@@ -1,4 +1,4 @@
-import { ChevronRight, Folder, Image as ImageIcon, Monitor, HardDrive } from "lucide-react";
+import { ChevronRight, Folder, Image as ImageIcon, Monitor, HardDrive, Cloud } from "lucide-react";
 import { cn } from "../lib/utils";
 import { FileEntry } from "../types";
 
@@ -7,9 +7,10 @@ interface TreeItemProps {
     depth: number;
     onToggle: (e: FileEntry) => void;
     activePath: string;
+    storageType: "local" | "cloud";
 }
 
-export function TreeItem({ entry, depth, onToggle, activePath }: TreeItemProps) {
+export function TreeItem({ entry, depth, onToggle, activePath, storageType }: TreeItemProps) {
     const isActive = activePath === entry.path;
     const isSpecialRoot = entry.path === "root";
     const isDrive = entry.name.includes("Disco Local") || entry.name.includes("C:\\");
@@ -24,7 +25,7 @@ export function TreeItem({ entry, depth, onToggle, activePath }: TreeItemProps) 
                 className={cn(
                     "group flex items-center gap-2.5 py-1.5 px-4 cursor-pointer transition-all border-l-[3px]",
                     isActive
-                        ? "bg-white/[0.08] text-white border-white"
+                        ? (storageType === "cloud" ? "bg-blue-500/10 text-white border-blue-500" : "bg-white/[0.08] text-white border-white")
                         : "text-white/50 hover:bg-white/[0.05] hover:text-white border-transparent"
                 )}
                 style={{ paddingLeft: `${depth * 12 + 16}px` }}
@@ -42,7 +43,7 @@ export function TreeItem({ entry, depth, onToggle, activePath }: TreeItemProps) 
 
                 <div className="shrink-0">
                     {isSpecialRoot ? (
-                        <Monitor className="w-3.5 h-3.5 text-white/70" />
+                        storageType === "cloud" ? <Cloud className="w-3.5 h-3.5 text-blue-400" /> : <Monitor className="w-3.5 h-3.5 text-white/70" />
                     ) : isDrive ? (
                         <HardDrive className="w-3.5 h-3.5 text-white/50" />
                     ) : entry.isDirectory ? (
@@ -69,6 +70,7 @@ export function TreeItem({ entry, depth, onToggle, activePath }: TreeItemProps) 
                             depth={depth + 1}
                             onToggle={onToggle}
                             activePath={activePath}
+                            storageType={storageType}
                         />
                     ))}
                 </div>
